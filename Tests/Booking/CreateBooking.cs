@@ -20,23 +20,22 @@ public class CreateBookingTests
         await CreateAPIRequestContext();
     }
 
+    Models.BookingRequest newBooking = new Models.BookingRequest
+    {
+        Firstname = "John",
+        Lastname = "Doe",
+        Totalprice = 123,
+        IsPaid = true,
+        BookingDates = new Models.BookingDates
+        {
+            Checkin = new DateTime(2024, 5, 14),
+            Checkout = new DateTime(2024, 5, 15)
+        },
+        Additionalneeds = "Breakfast"
+    };
     [Test]
     public async Task CreateBookingAddsNewEntry()
     {
-        Models.BookingRequest newBooking = new Models.BookingRequest
-        {
-            Firstname = "John",
-            Lastname = "Doe",
-            Totalprice = 123,
-            IsPaid = true,
-            BookingDates = new Models.BookingDates
-            {
-                Checkin = new DateTime(2024, 5, 14),
-                Checkout = new DateTime(2024, 5, 15)
-            },
-            Additionalneeds = "Breakfast"
-        };
-
         var responsea = await Request.PostAsync("booking", new APIRequestContextOptions
         {
             Headers = new Dictionary<string, string>
@@ -58,8 +57,7 @@ public class CreateBookingTests
         var responseb = await Request.GetAsync($"booking/{bookingID}");
 
         Assert.AreEqual(200, responseb.Status, "Expected status code: 200");
-        var responseBody = await responseb.TextAsync();
-        Console.WriteLine(responseBody);
+        
 
     }
     private async Task CreateAPIRequestContext()

@@ -34,16 +34,31 @@ public class PartialUpdateBookingTests
         },
         Additionalneeds = "Breakfast"
     };
-    Models.BookingRequest UpdatedBooking = new Models.BookingRequest
+
+    Models.BookingRequestBase updatedBooking = new Models.BookingRequestBase
     {
         Firstname = "Jane",
         Lastname = "Poe",
     };
 
     [Test]
-    public async Task UpdateBookingChangesTheExistentEntryContent()
+    public async Task PartialUpdateBookingChangesTheExistentEntryContent()
     {
-        var responsea = await Request.PostAsync("booking", new APIRequestContextOptions
+        var data = new Dictionary<string, object>()
+            {
+                {"username", "admin"},
+                {"password", "password123" }
+            };
+        var responsea = await Request.PostAsync("auth", new() { DataObject = data });
+
+        var jsonResponsea = await responsea.JsonAsync<TokenResponse>(new JsonSerializerOptions()
+        {
+            PropertyNameCaseInsensitive = true
+        });
+        string token = jsonResponsea.Token;
+
+
+        var responseb = await Request.PostAsync("booking", new APIRequestContextOptions
         {
             Headers = new Dictionary<string, string>
                 {
@@ -52,26 +67,38 @@ public class PartialUpdateBookingTests
             DataObject = newBooking
         });
 
-        Assert.AreEqual(200, responsea.Status, "Expected status code: 200");
+        Assert.AreEqual(200, responseb.Status, "Expected status code: 200");
 
-        var jsonResponse = await responsea.JsonAsync<BookingResponse>(new JsonSerializerOptions()
+        var jsonResponseb = await responseb.JsonAsync<BookingResponse>(new JsonSerializerOptions()
         {
             PropertyNameCaseInsensitive = true
         });
-        var bookingID = jsonResponse.Id;
+        var bookingID = jsonResponseb.Id;
 
-
-        var responseb = await Request.PatchAsync($"booking/{bookingID}", new APIRequestContextOptions
+        var responsec = await Request.PatchAsync($"booking/{bookingID}", new APIRequestContextOptions
         {
             Headers = new Dictionary<string, string>
                 {
-                    { "Content-Type", "application/json" }
+                    { "Content-Type", "application/json" },
+                    { "Cookie", $"token={token}" }
                 },
-            DataObject = UpdatedBooking
+            DataObject = updatedBooking
         });
-        Assert.AreEqual(200, responseb.Status, "Expected status code: 200");
+        Assert.AreEqual(200, responsec.Status, "Expected status code: 200");
+
+        var responsed = await Request.GetAsync($"booking/{bookingID}");
+        var jsonResponsed = await responsed.JsonAsync<Models.BookingRequest>(new JsonSerializerOptions()
+        {
+            PropertyNameCaseInsensitive = true
+        });
+        Assert.That(responsed.Ok);
+        Assert.AreEqual(200, responsed.Status, "Expected status code: 200");
+
+        Assert.AreEqual(jsonResponsed.Firstname, updatedBooking.Firstname, "Expected Lastname to be updated");
+        Assert.AreEqual(jsonResponsed.Lastname, updatedBooking.Lastname, "Expected Lastname to be updated");
 
     }
+
     [Test]
 
     public async Task UpdatedBookingReturns403StatusWithoutAuthentication()
@@ -82,7 +109,7 @@ public class PartialUpdateBookingTests
                 {
                     { "Content-Type", "application/json" },
                 },
-            DataObject = UpdatedBooking
+            DataObject = updatedBooking
         });
         Assert.AreEqual(403, response.Status, "Expected status code: 403");
         var responseBody = await response.TextAsync();

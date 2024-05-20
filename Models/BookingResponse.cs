@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace PlaywrightTests.Models
 {
-    internal class BookingResponse
+    internal class BookingResponse : BookingRequest
     {
         [JsonPropertyName("bookingid")]
         public int Id { get; set; }

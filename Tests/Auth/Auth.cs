@@ -1,40 +1,52 @@
-using Microsoft.Playwright.NUnit;
 using Microsoft.Playwright;
+using PlaywrightTests.Models;
+using System.Text.Json;
 
 namespace PlaywrightTests.Tests;
 
-    [TestFixture]
+[TestFixture]
     public class CreateTokenTest
     {
     IPlaywright playwright;
 
         private IAPIRequestContext Request;
+        public void GlobalSetup()
+        {
+        log4net.Config.XmlConfigurator.Configure();
+        }
+        private static readonly ILog log = LogManager.GetLogger(typeof(CreateTokenTest));
 
-        [OneTimeSetUp]
+    [OneTimeSetUp]
+        
         public async Task SetupApiTesting()
         {
             playwright = await Playwright.CreateAsync();
             await CreateAPIRequestContext();
         }
 
-        [Test]
-        public async Task AuthSuccessPath()
-        {
+    [Test]
+    public async Task AuthSuccessPath()
+    {
         var data = new Dictionary<string, object>()
             {
                 {"username", "admin"},
                 {"password", "password123" }
             };
+        log.Info("Starting a test");
         var response = await Request.PostAsync("auth", new() { DataObject = data });
+
+        log.Debug("Assert that response status is 200 OK");
         Assert.That(response.Ok);
         Assert.AreEqual(200, response.Status, "Expected status code: 200");
 
-        var responseBody = await response.TextAsync();
-        Console.WriteLine(responseBody);
-
-        Assert.IsNotEmpty(responseBody, "Response body should not be empty");
-        }
-    [Test]
+        log.Debug("Assert that response body is not empty");
+        var jsonResponse = await response.JsonAsync<TokenResponse>(new JsonSerializerOptions()
+        {
+            PropertyNameCaseInsensitive = true
+        });
+        Assert.That(jsonResponse.Token, Is.Not.Empty);
+    }
+        [Test]
     public async Task AuthWithWrongCredentials()
     {
         var data = new Dictionary<string, object>()
@@ -46,10 +58,11 @@ namespace PlaywrightTests.Tests;
         Assert.That(response.Ok);
         Assert.AreEqual(200, response.Status, "Expected status code: 200");
 
-        var responseBody = await response.TextAsync();
-        Console.WriteLine(responseBody);
-
-        Assert.IsNotEmpty(responseBody, "Response body should not be empty");
+        var jsonResponse = await response.JsonAsync<TokenResponse>(new JsonSerializerOptions()
+        {
+            PropertyNameCaseInsensitive = true
+        });
+        Assert.That(jsonResponse.Token, Is.Null);
     }
         private async Task CreateAPIRequestContext()
     {

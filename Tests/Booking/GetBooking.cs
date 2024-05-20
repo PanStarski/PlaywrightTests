@@ -1,6 +1,8 @@
 ﻿using Microsoft.Playwright.NUnit;
 using Microsoft.Playwright;
 using Newtonsoft.Json;
+using PlaywrightTests.Models;
+using System.Text.Json;
 
 namespace PlaywrightTests.Tests;
 
@@ -17,22 +19,49 @@ public class GetBookingTest
         playwright = await Playwright.CreateAsync();
         await CreateAPIRequestContext();
     }
-
-    [Test]
-    public async Task GetBookingReturnsListOfBookings()
+    Models.BookingRequest newBooking = new Models.BookingRequest
     {
-        var response = await Request.GetAsync("booking/1");
-        var jsonResponse = await response.JsonAsync<Models.BookingRequest>(new System.Text.Json.JsonSerializerOptions()
+        Firstname = "John",
+        Lastname = "Doe",
+        Totalprice = 123,
+        IsPaid = true,
+        BookingDates = new Models.BookingDates
+        {
+            Checkin = new DateTime(2024, 5, 14),
+            Checkout = new DateTime(2024, 5, 15)
+        },
+        Additionalneeds = "Breakfast"
+    };
+    [Test]
+    public async Task GetBookingReturnsTheCreatedEntry()
+    {
+        var responsea = await Request.PostAsync("booking", new APIRequestContextOptions
+        {
+            Headers = new Dictionary<string, string>
+                {
+                    { "Content-Type", "application/json" }
+                },
+            DataObject = newBooking
+        });
+
+        Assert.AreEqual(200, responsea.Status, "Expected status code: 200");
+
+        var jsonResponse = await responsea.JsonAsync<BookingResponse>(new JsonSerializerOptions()
         {
             PropertyNameCaseInsensitive = true
         });
-        Assert.That(response.Ok);
-        Assert.AreEqual(200, response.Status, "Expected status code: 200");
+        var bookingID = jsonResponse.Id;
 
-        Assert.IsNotEmpty(jsonResponse.Firstname, "The Firstname should not be empty.");
-        Assert.IsNotEmpty(jsonResponse.Lastname, "The Lastname should not be empty.");
+        var responseb = await Request.GetAsync($"booking/{bookingID}");
+        var jsonResponseb = await responseb.JsonAsync<Models.BookingRequest>(new JsonSerializerOptions()
+        {
+            PropertyNameCaseInsensitive = true
+        });
+        Assert.That(responseb.Ok);
+        Assert.AreEqual(200, responseb.Status, "Expected status code: 200");
 
-        Console.WriteLine(jsonResponse.Firstname);
+        Assert.IsNotEmpty(jsonResponseb.Firstname, "The Firstname should not be empty.");
+        Assert.IsNotEmpty(jsonResponseb.Lastname, "The Lastname should not be empty.");
 
     }
     private async Task CreateAPIRequestContext()
