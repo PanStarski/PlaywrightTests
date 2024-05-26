@@ -20,13 +20,13 @@ public class CreateBookingTests
         await CreateAPIRequestContext();
     }
 
-    Models.BookingRequest newBooking = new Models.BookingRequest
+    BookingRequest newBooking = new BookingRequest
     {
         Firstname = "John",
         Lastname = "Doe",
         Totalprice = 123,
         IsPaid = true,
-        BookingDates = new Models.BookingDates
+        BookingDates = new BookingDates
         {
             Checkin = new DateTime(2024, 5, 14),
             Checkout = new DateTime(2024, 5, 15)
@@ -38,14 +38,10 @@ public class CreateBookingTests
     {
         var responsea = await Request.PostAsync("booking", new APIRequestContextOptions
         {
-            Headers = new Dictionary<string, string>
-                {
-                    { "Content-Type", "application/json" }
-                },
             DataObject =  newBooking
         });
 
-        Assert.AreEqual(200, responsea.Status, "Expected status code: 200");
+        Assert.That(responsea.Status, Is.EqualTo(200), "Expected status code: 200");
 
         var jsonResponse = await responsea.JsonAsync<BookingResponse>(new JsonSerializerOptions()
         {
@@ -56,7 +52,7 @@ public class CreateBookingTests
 
         var responseb = await Request.GetAsync($"booking/{bookingID}");
 
-        Assert.AreEqual(200, responseb.Status, "Expected status code: 200");
+        Assert.That(responseb.Status, Is.EqualTo(200), "Expected status code: 200");
         
 
     }

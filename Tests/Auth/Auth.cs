@@ -17,7 +17,6 @@ namespace PlaywrightTests.Tests;
         private static readonly ILog log = LogManager.GetLogger(typeof(CreateTokenTest));
 
     [OneTimeSetUp]
-        
         public async Task SetupApiTesting()
         {
             playwright = await Playwright.CreateAsync();
@@ -37,7 +36,7 @@ namespace PlaywrightTests.Tests;
 
         log.Debug("Assert that response status is 200 OK");
         Assert.That(response.Ok);
-        Assert.AreEqual(200, response.Status, "Expected status code: 200");
+        Assert.That(response.Status, Is.EqualTo(200), "Expected status code: 200");
 
         log.Debug("Assert that response body is not empty");
         var jsonResponse = await response.JsonAsync<TokenResponse>(new JsonSerializerOptions()
@@ -56,7 +55,7 @@ namespace PlaywrightTests.Tests;
             };
         var response = await Request.PostAsync("auth", new() { DataObject = data });
         Assert.That(response.Ok);
-        Assert.AreEqual(200, response.Status, "Expected status code: 200");
+        Assert.That(response.Status, Is.EqualTo(200), "Expected status code: 200");
 
         var jsonResponse = await response.JsonAsync<TokenResponse>(new JsonSerializerOptions()
         {

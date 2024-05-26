@@ -19,13 +19,13 @@ public class GetBookingTest
         playwright = await Playwright.CreateAsync();
         await CreateAPIRequestContext();
     }
-    Models.BookingRequest newBooking = new Models.BookingRequest
+    BookingRequest newBooking = new BookingRequest
     {
         Firstname = "John",
         Lastname = "Doe",
         Totalprice = 123,
         IsPaid = true,
-        BookingDates = new Models.BookingDates
+        BookingDates = new BookingDates
         {
             Checkin = new DateTime(2024, 5, 14),
             Checkout = new DateTime(2024, 5, 15)

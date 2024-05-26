@@ -5,6 +5,7 @@ using System.Text.Json;
 using PlaywrightTests.Models;
 using System.Reflection.PortableExecutable;
 using System.ComponentModel;
+using Newtonsoft.Json.Linq;
 
 namespace PlaywrightTests.Tests;
 
@@ -15,19 +16,21 @@ public class PartialUpdateBookingTests
 
     private IAPIRequestContext Request;
 
+    private string _token;
+
     [OneTimeSetUp]
     public async Task SetupApiTesting()
     {
         playwright = await Playwright.CreateAsync();
         await CreateAPIRequestContext();
     }
-    Models.BookingRequest newBooking = new Models.BookingRequest
+    BookingRequest newBooking = new BookingRequest
     {
         Firstname = "John",
         Lastname = "Doe",
         Totalprice = 123,
         IsPaid = true,
-        BookingDates = new Models.BookingDates
+        BookingDates = new BookingDates
         {
             Checkin = new DateTime(2024, 5, 14),
             Checkout = new DateTime(2024, 5, 15)
@@ -35,28 +38,32 @@ public class PartialUpdateBookingTests
         Additionalneeds = "Breakfast"
     };
 
-    Models.BookingRequestBase updatedBooking = new Models.BookingRequestBase
+    BookingRequestBase updatedBooking = new BookingRequestBase
     {
         Firstname = "Jane",
         Lastname = "Poe",
     };
 
-    [Test]
-    public async Task PartialUpdateBookingChangesTheExistentEntryContent()
+    [SetUp]
+    public async Task GenerateToken()
     {
         var data = new Dictionary<string, object>()
             {
                 {"username", "admin"},
                 {"password", "password123" }
             };
-        var responsea = await Request.PostAsync("auth", new() { DataObject = data });
+        var tokenResponse = await Request.PostAsync("auth", new() { DataObject = data });
 
-        var jsonResponsea = await responsea.JsonAsync<TokenResponse>(new JsonSerializerOptions()
+        var jsonTokenResponse = await tokenResponse.JsonAsync<TokenResponse>(new JsonSerializerOptions()
         {
             PropertyNameCaseInsensitive = true
         });
-        string token = jsonResponsea.Token;
+        _token = jsonTokenResponse.Token;
+    }
 
+    [Test]
+    public async Task PartialUpdateBookingChangesTheExistentEntryContent()
+    {
 
         var responseb = await Request.PostAsync("booking", new APIRequestContextOptions
         {
@@ -67,7 +74,7 @@ public class PartialUpdateBookingTests
             DataObject = newBooking
         });
 
-        Assert.AreEqual(200, responseb.Status, "Expected status code: 200");
+        Assert.That(responseb.Status, Is.EqualTo(200), "Expected status code: 200");
 
         var jsonResponseb = await responseb.JsonAsync<BookingResponse>(new JsonSerializerOptions()
         {
@@ -80,22 +87,22 @@ public class PartialUpdateBookingTests
             Headers = new Dictionary<string, string>
                 {
                     { "Content-Type", "application/json" },
-                    { "Cookie", $"token={token}" }
+                    { "Cookie", $"token={_token}" }
                 },
             DataObject = updatedBooking
         });
-        Assert.AreEqual(200, responsec.Status, "Expected status code: 200");
+        Assert.That(responsec.Status, Is.EqualTo(200), "Expected status code: 200");
 
         var responsed = await Request.GetAsync($"booking/{bookingID}");
-        var jsonResponsed = await responsed.JsonAsync<Models.BookingRequest>(new JsonSerializerOptions()
+        var jsonResponsed = await responsed.JsonAsync<BookingRequest>(new JsonSerializerOptions()
         {
             PropertyNameCaseInsensitive = true
         });
         Assert.That(responsed.Ok);
-        Assert.AreEqual(200, responsed.Status, "Expected status code: 200");
+        Assert.That(responsed.Status, Is.EqualTo(200), "Expected status code: 200");
 
-        Assert.AreEqual(jsonResponsed.Firstname, updatedBooking.Firstname, "Expected Lastname to be updated");
-        Assert.AreEqual(jsonResponsed.Lastname, updatedBooking.Lastname, "Expected Lastname to be updated");
+        Assert.That(updatedBooking.Firstname, Is.EqualTo(jsonResponsed.Firstname), "Expected Lastname to be updated");
+        Assert.That(updatedBooking.Lastname, Is.EqualTo(jsonResponsed.Lastname), "Expected Lastname to be updated");
 
     }
 
@@ -111,7 +118,7 @@ public class PartialUpdateBookingTests
                 },
             DataObject = updatedBooking
         });
-        Assert.AreEqual(403, response.Status, "Expected status code: 403");
+        Assert.That(response.Status, Is.EqualTo(403), "Expected status code: 403");
         var responseBody = await response.TextAsync();
         Console.WriteLine(responseBody);
     }
