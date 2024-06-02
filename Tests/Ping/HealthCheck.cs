@@ -21,7 +21,7 @@ public class HealthCheckTests
     public async Task HealthCheckReturns201Status()
     {
         var response = await Request.GetAsync("ping");
-        Assert.AreEqual(201, response.Status, "Expected status code: 201");
+        Assert.That(response.Status, Is.EqualTo(201), "Expected status code: 201");
 
         var responseBody = await response.TextAsync();
         Console.WriteLine(responseBody);

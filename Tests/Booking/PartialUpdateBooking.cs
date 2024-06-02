@@ -1,10 +1,7 @@
-﻿using Microsoft.Playwright.NUnit;
-using Microsoft.Playwright;
-using Newtonsoft.Json;
+﻿using Microsoft.Playwright;
 using System.Text.Json;
 using PlaywrightTests.Models;
-using System.Reflection.PortableExecutable;
-using System.ComponentModel;
+
 
 namespace PlaywrightTests.Tests;
 
@@ -15,19 +12,22 @@ public class PartialUpdateBookingTests
 
     private IAPIRequestContext Request;
 
+    string _token;
+
     [OneTimeSetUp]
     public async Task SetupApiTesting()
     {
         playwright = await Playwright.CreateAsync();
         await CreateAPIRequestContext();
+        await GenerateToken();
     }
-    Models.BookingRequest newBooking = new Models.BookingRequest
+    BookingRequest newBooking = new BookingRequest
     {
         Firstname = "John",
         Lastname = "Doe",
         Totalprice = 123,
         IsPaid = true,
-        BookingDates = new Models.BookingDates
+        BookingDates = new BookingDates
         {
             Checkin = new DateTime(2024, 5, 14),
             Checkout = new DateTime(2024, 5, 15)
@@ -35,7 +35,7 @@ public class PartialUpdateBookingTests
         Additionalneeds = "Breakfast"
     };
 
-    Models.BookingRequestBase updatedBooking = new Models.BookingRequestBase
+    BookingRequestBase updatedBooking = new BookingRequestBase
     {
         Firstname = "Jane",
         Lastname = "Poe",
@@ -44,58 +44,39 @@ public class PartialUpdateBookingTests
     [Test]
     public async Task PartialUpdateBookingChangesTheExistentEntryContent()
     {
-        var data = new Dictionary<string, object>()
-            {
-                {"username", "admin"},
-                {"password", "password123" }
-            };
-        var responsea = await Request.PostAsync("auth", new() { DataObject = data });
-
-        var jsonResponsea = await responsea.JsonAsync<TokenResponse>(new JsonSerializerOptions()
+        var createBookingResponse = await Request.PostAsync("booking", new APIRequestContextOptions
         {
-            PropertyNameCaseInsensitive = true
-        });
-        string token = jsonResponsea.Token;
-
-
-        var responseb = await Request.PostAsync("booking", new APIRequestContextOptions
-        {
-            Headers = new Dictionary<string, string>
-                {
-                    { "Content-Type", "application/json" }
-                },
             DataObject = newBooking
         });
 
-        Assert.AreEqual(200, responseb.Status, "Expected status code: 200");
+        Assert.That(createBookingResponse.Status, Is.EqualTo(200), "Expected status code: 200");
 
-        var jsonResponseb = await responseb.JsonAsync<BookingResponse>(new JsonSerializerOptions()
+        var createBookingJsonResponse = await createBookingResponse.JsonAsync<BookingResponse>(new JsonSerializerOptions()
         {
             PropertyNameCaseInsensitive = true
         });
-        var bookingID = jsonResponseb.Id;
+        var bookingID = createBookingJsonResponse.Id;
 
-        var responsec = await Request.PatchAsync($"booking/{bookingID}", new APIRequestContextOptions
+        var updateBookingResponse = await Request.PatchAsync($"booking/{bookingID}", new APIRequestContextOptions
         {
             Headers = new Dictionary<string, string>
                 {
-                    { "Content-Type", "application/json" },
-                    { "Cookie", $"token={token}" }
+                    { "Cookie", $"token={_token}" }
                 },
             DataObject = updatedBooking
         });
-        Assert.AreEqual(200, responsec.Status, "Expected status code: 200");
+        Assert.That(updateBookingResponse.Status, Is.EqualTo(200), "Expected status code: 200");
 
-        var responsed = await Request.GetAsync($"booking/{bookingID}");
-        var jsonResponsed = await responsed.JsonAsync<Models.BookingRequest>(new JsonSerializerOptions()
+        var getBookingResponse = await Request.GetAsync($"booking/{bookingID}");
+        var getBookingJsonResponse = await getBookingResponse.JsonAsync<BookingRequest>(new JsonSerializerOptions()
         {
             PropertyNameCaseInsensitive = true
         });
-        Assert.That(responsed.Ok);
-        Assert.AreEqual(200, responsed.Status, "Expected status code: 200");
+        Assert.That(getBookingResponse.Ok);
+        Assert.That(getBookingResponse.Status, Is.EqualTo(200), "Expected status code: 200");
 
-        Assert.AreEqual(jsonResponsed.Firstname, updatedBooking.Firstname, "Expected Lastname to be updated");
-        Assert.AreEqual(jsonResponsed.Lastname, updatedBooking.Lastname, "Expected Lastname to be updated");
+        Assert.That(updatedBooking.Firstname, Is.EqualTo(getBookingJsonResponse.Firstname), "Expected Lastname to be updated");
+        Assert.That(updatedBooking.Lastname, Is.EqualTo(getBookingJsonResponse.Lastname), "Expected Lastname to be updated");
 
     }
 
@@ -105,15 +86,22 @@ public class PartialUpdateBookingTests
     {
         var response = await Request.PatchAsync($"booking/1", new APIRequestContextOptions
         {
+            DataObject = updatedBooking
+        });
+        Assert.That(response.Status, Is.EqualTo(403), "Expected status code: 403");
+    }
+    public async Task UpdatedBookingReturns403StatusWithWrongToken()
+    {
+        _token = "1234567890";
+        var response = await Request.PatchAsync($"booking/1", new APIRequestContextOptions
+        {
             Headers = new Dictionary<string, string>
                 {
-                    { "Content-Type", "application/json" },
+                    { "Cookie", $"token={_token}" }
                 },
             DataObject = updatedBooking
         });
-        Assert.AreEqual(403, response.Status, "Expected status code: 403");
-        var responseBody = await response.TextAsync();
-        Console.WriteLine(responseBody);
+        Assert.That(response.Status, Is.EqualTo(403), "Expected status code: 403");
     }
 
     private async Task CreateAPIRequestContext()
@@ -127,5 +115,21 @@ public class PartialUpdateBookingTests
             ExtraHTTPHeaders = headers,
             IgnoreHTTPSErrors = true
         });
+    }
+
+    public async Task GenerateToken()
+    {
+        TokenRequest tokenRequest = new TokenRequest
+        {
+            Username = "admin",
+            Password = "password123"
+        };
+        var authResponse = await Request.PostAsync("auth", new APIRequestContextOptions { DataObject = tokenRequest });
+
+        var jsonAuthResponse = await authResponse.JsonAsync<TokenResponse>(new JsonSerializerOptions()
+        {
+            PropertyNameCaseInsensitive = true
+        });
+        _token = jsonAuthResponse.Token;
     }
 }

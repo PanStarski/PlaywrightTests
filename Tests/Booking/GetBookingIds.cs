@@ -20,13 +20,10 @@ public class GetBookingIdsTest
     [Test]
     public async Task GetBookingReturnsListOfBookings()
     {
-        var response = await Request.GetAsync("booking");
-        var bookings = await response.JsonAsync<List<Models.BookingResponse>>();
-        Assert.AreEqual(200, response.Status, "Expected status code: 200"); 
+        var getBookingResponse = await Request.GetAsync("booking");
+        var bookings = await getBookingResponse.JsonAsync<List<Models.BookingResponse>>();
+        Assert.That(getBookingResponse.Status, Is.EqualTo(200), "Expected status code: 200"); 
         Assert.That(bookings.Count, Is.GreaterThan(0));
-
-        var responseBody = await response.TextAsync();
-        Console.WriteLine(responseBody);
     }
     private async Task CreateAPIRequestContext()
     {

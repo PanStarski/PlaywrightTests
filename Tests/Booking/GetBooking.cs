@@ -19,13 +19,13 @@ public class GetBookingTest
         playwright = await Playwright.CreateAsync();
         await CreateAPIRequestContext();
     }
-    Models.BookingRequest newBooking = new Models.BookingRequest
+    BookingRequest newBooking = new BookingRequest
     {
         Firstname = "John",
         Lastname = "Doe",
         Totalprice = 123,
         IsPaid = true,
-        BookingDates = new Models.BookingDates
+        BookingDates = new BookingDates
         {
             Checkin = new DateTime(2024, 5, 14),
             Checkout = new DateTime(2024, 5, 15)
@@ -35,34 +35,35 @@ public class GetBookingTest
     [Test]
     public async Task GetBookingReturnsTheCreatedEntry()
     {
-        var responsea = await Request.PostAsync("booking", new APIRequestContextOptions
+        var createBookingResponse = await Request.PostAsync("booking", new APIRequestContextOptions
         {
-            Headers = new Dictionary<string, string>
-                {
-                    { "Content-Type", "application/json" }
-                },
             DataObject = newBooking
         });
 
-        Assert.AreEqual(200, responsea.Status, "Expected status code: 200");
+        Assert.That(createBookingResponse.Status, Is.EqualTo(200), "Expected status code: 200");
 
-        var jsonResponse = await responsea.JsonAsync<BookingResponse>(new JsonSerializerOptions()
+        var createBookingJsonResponse = await createBookingResponse.JsonAsync<BookingResponse>(new JsonSerializerOptions()
         {
             PropertyNameCaseInsensitive = true
         });
-        var bookingID = jsonResponse.Id;
+        var bookingID = createBookingJsonResponse.Id;
 
-        var responseb = await Request.GetAsync($"booking/{bookingID}");
-        var jsonResponseb = await responseb.JsonAsync<Models.BookingRequest>(new JsonSerializerOptions()
+        var getBookingResponse = await Request.GetAsync($"booking/{bookingID}");
+        var getBookingJsonResponse = await getBookingResponse.JsonAsync<Models.BookingRequest>(new JsonSerializerOptions()
         {
             PropertyNameCaseInsensitive = true
         });
-        Assert.That(responseb.Ok);
-        Assert.AreEqual(200, responseb.Status, "Expected status code: 200");
+        Assert.That(getBookingResponse.Ok);
+        Assert.That(getBookingResponse.Status, Is.EqualTo(200), "Expected status code: 200");
 
-        Assert.IsNotEmpty(jsonResponseb.Firstname, "The Firstname should not be empty.");
-        Assert.IsNotEmpty(jsonResponseb.Lastname, "The Lastname should not be empty.");
-
+        Assert.Multiple(() =>
+        {
+            Assert.IsNotEmpty(getBookingJsonResponse.Firstname, "The Firstname should not be empty.");
+            Assert.IsNotEmpty(getBookingJsonResponse.Lastname, "The Lastname should not be empty.");
+            Assert.IsNotNull(getBookingJsonResponse.IsPaid, "The IsPaid should not be empty");
+            Assert.IsNotNull(getBookingJsonResponse.Totalprice, "Totalprice should not be empty");
+            Assert.IsNotEmpty(getBookingJsonResponse.Additionalneeds, "AdditionalNeeds should not be empty");
+        });
     }
     private async Task CreateAPIRequestContext()
     {

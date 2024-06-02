@@ -12,6 +12,11 @@ public class CreateBookingTests
     IPlaywright playwright;
 
     private IAPIRequestContext Request;
+    public void GlobalSetup()
+    {
+        log4net.Config.XmlConfigurator.Configure();
+    }
+    private static readonly ILog log = LogManager.GetLogger(typeof(CreateTokenTest));
 
     [OneTimeSetUp]
     public async Task SetupApiTesting()
@@ -36,29 +41,24 @@ public class CreateBookingTests
     [Test]
     public async Task CreateBookingAddsNewEntry()
     {
-        var responsea = await Request.PostAsync("booking", new APIRequestContextOptions
+        var createBookingResponse = await Request.PostAsync("booking", new APIRequestContextOptions
         {
-            Headers = new Dictionary<string, string>
-                {
-                    { "Content-Type", "application/json" }
-                },
             DataObject =  newBooking
         });
 
-        Assert.AreEqual(200, responsea.Status, "Expected status code: 200");
+        Assert.That(createBookingResponse.Status, Is.EqualTo(200), "Expected status code: 200");
 
-        var jsonResponse = await responsea.JsonAsync<BookingResponse>(new JsonSerializerOptions()
+        var createBookingJsonResponse = await createBookingResponse.JsonAsync<BookingResponse>(new JsonSerializerOptions()
         {
             PropertyNameCaseInsensitive = true
         });
-        var bookingID = jsonResponse.Id;
+        var bookingID = createBookingJsonResponse.Id;
 
 
-        var responseb = await Request.GetAsync($"booking/{bookingID}");
+        var getBookingResponse = await Request.GetAsync($"booking/{bookingID}");
 
-        Assert.AreEqual(200, responseb.Status, "Expected status code: 200");
+        Assert.That(getBookingResponse.Status, Is.EqualTo(200), "Expected status code: 200. The booking hasn't been found.");
         
-
     }
     private async Task CreateAPIRequestContext()
     {

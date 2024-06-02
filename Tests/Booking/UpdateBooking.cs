@@ -8,8 +8,8 @@ namespace PlaywrightTests.Tests;
 public class UpdateBookingTests
 {
     IPlaywright playwright;
-
     private IAPIRequestContext Request;
+    private string _token;
 
     [OneTimeSetUp]
     public async Task SetupApiTesting()
@@ -47,64 +47,46 @@ public class UpdateBookingTests
     [Test]
     public async Task UpdateBookingChangesTheExistentEntryContent()
     {
-        var data = new Dictionary<string, object>()
-            {
-                {"username", "admin"},
-                {"password", "password123" }
-            };
-        var responsea = await Request.PostAsync("auth", new() { DataObject = data });
+        var createBookingResponse = await Request.PostAsync("booking", new APIRequestContextOptions
+        {
+          DataObject = newBooking
+        });
 
-        var jsonResponsea = await responsea.JsonAsync<TokenResponse>(new JsonSerializerOptions()
+        Assert.That(createBookingResponse.Status, Is.EqualTo(200), "Expected status code: 200");
+
+        var createBookingJsonResponse = await createBookingResponse.JsonAsync<BookingResponse>(new JsonSerializerOptions()
         {
             PropertyNameCaseInsensitive = true
         });
-        string token = jsonResponsea.Token;
+        var bookingID = createBookingJsonResponse.Id;
 
-
-        var responseb = await Request.PostAsync("booking", new APIRequestContextOptions
+        var updateBookingResponse = await Request.PutAsync($"booking/{bookingID}", new APIRequestContextOptions
         {
             Headers = new Dictionary<string, string>
                 {
-                    { "Content-Type", "application/json" }
-                },
-            DataObject = newBooking
-        });
-
-        Assert.AreEqual(200, responseb.Status, "Expected status code: 200");
-
-        var jsonResponseb = await responseb.JsonAsync<BookingResponse>(new JsonSerializerOptions()
-        {
-            PropertyNameCaseInsensitive = true
-        });
-        var bookingID = jsonResponseb.Id;
-
-        var responsec = await Request.PutAsync($"booking/{bookingID}", new APIRequestContextOptions
-        {
-            Headers = new Dictionary<string, string>
-                {
-                    { "Content-Type", "application/json" },
-                    { "Cookie", $"token={token}" }
+                   { "Cookie", $"token={_token}" }
                 },
             DataObject = UpdatedBooking
         });
-        Assert.AreEqual(200, responsec.Status, "Expected status code: 200");
+        Assert.That(updateBookingResponse.Status, Is.EqualTo(200), "Expected status code: 200");
 
-        var responsed = await Request.GetAsync($"booking/{bookingID}");
-        var jsonResponsed = await responsed.JsonAsync<  BookingRequest>(new JsonSerializerOptions()
+        var getBookingResponse = await Request.GetAsync($"booking/{bookingID}");
+        var getBookingJsonResponse = await getBookingResponse.JsonAsync<  BookingRequest>(new JsonSerializerOptions()
         {
             PropertyNameCaseInsensitive = true
         });
-        Assert.That(responsed.Ok);
-        Assert.AreEqual(200, responsed.Status, "Expected status code: 200");
-
-        Assert.AreEqual(jsonResponsed.Firstname, UpdatedBooking.Firstname, "Expected Firstname to be updated");
-        Assert.AreEqual(jsonResponsed.Lastname, UpdatedBooking.Lastname, "Expected Lastname to be updated");
-        Assert.AreEqual(jsonResponsed.IsPaid, UpdatedBooking.IsPaid, "Expected isPaid to be updated");
-        Assert.AreEqual(jsonResponsed.Totalprice, UpdatedBooking.Totalprice, "Expected Totalprice to be updated");
-        Assert.AreEqual(jsonResponsed.Additionalneeds, UpdatedBooking.Additionalneeds, "Expected Additionalneeds to be updated");
-        Assert.AreEqual(jsonResponsed.BookingDates.Checkin, UpdatedBooking.BookingDates.Checkin, "Expected Checkin to be updated");
-        Assert.AreEqual(jsonResponsed.BookingDates.Checkout, UpdatedBooking.BookingDates.Checkout, "Expected Checkout to be updated");
-
+        Assert.That(getBookingResponse.Ok);
+        Assert.That(getBookingResponse.Status, Is.EqualTo(200), "Expected status code: 200");
+        Assert.Multiple(() =>
+        {
+            Assert.That(UpdatedBooking.Firstname, Is.EqualTo(getBookingJsonResponse.Firstname), "Expected Firstname to be updated");
+            Assert.That(UpdatedBooking.Lastname, Is.EqualTo(getBookingJsonResponse.Lastname), "Expected Lastname to be updated");
+            Assert.That(UpdatedBooking.IsPaid, Is.EqualTo(getBookingJsonResponse.IsPaid), "Expected isPaid to be updated");
+            Assert.That(UpdatedBooking.Totalprice, Is.EqualTo(getBookingJsonResponse.Totalprice), "Expected Totalprice to be updated");
+            Assert.That(UpdatedBooking.Additionalneeds, Is.EqualTo(getBookingJsonResponse.Additionalneeds), "Expected Additionalneeds to be updated");
+            Assert.That(UpdatedBooking.BookingDates.Checkin, Is.EqualTo(getBookingJsonResponse.BookingDates.Checkin), "Expected Checkin to be updated");
+            Assert.That(UpdatedBooking.BookingDates.Checkout, Is.EqualTo(getBookingJsonResponse.BookingDates.Checkout), "Expected Checkout to be updated");
+        });
     }
     [Test]
 
@@ -134,5 +116,20 @@ public class UpdateBookingTests
             ExtraHTTPHeaders = headers,
             IgnoreHTTPSErrors = true
         });
+    }
+    public async Task GenerateToken()
+    {
+        TokenRequest tokenRequest = new TokenRequest
+        {
+            Username = "admin",
+            Password = "password123"
+        };
+        var authResponse = await Request.PostAsync("auth", new APIRequestContextOptions { DataObject = tokenRequest });
+
+        var jsonAuthResponse = await authResponse.JsonAsync<TokenResponse>(new JsonSerializerOptions()
+        {
+            PropertyNameCaseInsensitive = true
+        });
+        _token = jsonAuthResponse.Token;
     }
 }

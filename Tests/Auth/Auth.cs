@@ -27,17 +27,17 @@ namespace PlaywrightTests.Tests;
     [Test]
     public async Task AuthSuccessPath()
     {
-        var data = new Dictionary<string, object>()
-            {
-                {"username", "admin"},
-                {"password", "password123" }
-            };
+        TokenRequest tokenRequest = new TokenRequest
+        {
+            Username = "admin",
+            Password = "password123"
+        };
         log.Info("Starting a test");
-        var response = await Request.PostAsync("auth", new() { DataObject = data });
+        var response = await Request.PostAsync("auth", new APIRequestContextOptions { DataObject = tokenRequest });
 
         log.Debug("Assert that response status is 200 OK");
         Assert.That(response.Ok);
-        Assert.AreEqual(200, response.Status, "Expected status code: 200");
+        Assert.That(response.Status, Is.EqualTo(200), "Expected status code: 200");
 
         log.Debug("Assert that response body is not empty");
         var jsonResponse = await response.JsonAsync<TokenResponse>(new JsonSerializerOptions()
@@ -49,12 +49,12 @@ namespace PlaywrightTests.Tests;
         [Test]
     public async Task AuthWithWrongCredentials()
     {
-        var data = new Dictionary<string, object>()
-            {
-                {"username", "admin"},
-                {"password", "password12345" } // wrong password
-            };
-        var response = await Request.PostAsync("auth", new() { DataObject = data });
+        TokenRequest tokenRequest = new TokenRequest
+        {
+            Username = "admin",
+            Password = "123456789" // wrong password
+        };
+        var response = await Request.PostAsync("auth", new APIRequestContextOptions { DataObject = tokenRequest });
         Assert.That(response.Ok);
         Assert.AreEqual(200, response.Status, "Expected status code: 200");
 

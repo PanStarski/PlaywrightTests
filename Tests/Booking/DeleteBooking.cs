@@ -22,33 +22,16 @@ public class DeleteBookingTests
     {
         playwright = await Playwright.CreateAsync();
         await CreateAPIRequestContext();
+        await GenerateToken();
     }
 
-    [SetUp]
-    public async Task GenerateToken()
-    {
-        var data = new Dictionary<string, object>()
-            {
-                {"username", "admin"},
-                {"password", "password123" }
-            };
-        var responsea = await Request.PostAsync("auth", new() { DataObject = data });
-
-        var jsonResponsea = await responsea.JsonAsync<TokenResponse>(new JsonSerializerOptions()
-        {
-            PropertyNameCaseInsensitive = true
-        });
-        _token = jsonResponsea.Token;
-    }
-    
-
-    Models.BookingRequest newBooking = new Models.BookingRequest
+    BookingRequest newBooking = new BookingRequest
     {
         Firstname = "John",
         Lastname = "Doe",
         Totalprice = 123,
         IsPaid = true,
-        BookingDates = new Models.BookingDates
+        BookingDates = new BookingDates
         {
             Checkin = new DateTime(2024, 5, 14),
             Checkout = new DateTime(2024, 5, 15)
@@ -60,43 +43,38 @@ public class DeleteBookingTests
     public async Task DeleteBookingRemovesExistingEntry()
     {
 
-        var responseb = await Request.PostAsync("booking", new APIRequestContextOptions
+        var createBookingResponse = await Request.PostAsync("booking", new APIRequestContextOptions
         {
-            Headers = new Dictionary<string, string>
-                {
-                    { "Content-Type", "application/json" }
-                },
             DataObject = newBooking
         });
 
-        Assert.AreEqual(200, responseb.Status, "Expected status code: 200");
+        Assert.That(createBookingResponse.Status, Is.EqualTo(200), "Expected status code: 200");
 
-        var jsonResponseb = await responseb.JsonAsync<BookingResponse>(new JsonSerializerOptions()
+        var createBookingJsonResponse = await createBookingResponse.JsonAsync<BookingResponse>(new JsonSerializerOptions()
         {
             PropertyNameCaseInsensitive = true
         });
-        var bookingID = jsonResponseb.Id;
+        var bookingID = createBookingJsonResponse.Id;
 
 
-        var responsec = await Request.DeleteAsync($"booking/{bookingID}", new APIRequestContextOptions
+        var deleteBookingResponse = await Request.DeleteAsync($"booking/{bookingID}", new APIRequestContextOptions
         {
             Headers = new Dictionary<string, string>
                 {
-                    { "Content-Type", "application/json" },
                     { "Cookie", $"token={_token}" }
                 }
         });
-        Assert.AreEqual(201, responsec.Status, "Expected status code: 201");
+        Assert.That(deleteBookingResponse.Status, Is.EqualTo(201), "Expected status code: 201");
 
-        var responsed = await Request.GetAsync($"booking/{bookingID}");
-        Assert.AreEqual(404, responsed.Status, "Expected status code: 404");
+        var getBookingResponse = await Request.GetAsync($"booking/{bookingID}");
+        Assert.That(getBookingResponse.Status, Is.EqualTo(404), "Expected status code: 404");
 
     }
     [Test]
     public async Task DeleteBookingReturns403StatusWithoutAuthentication()
     {
         var response = await Request.DeleteAsync($"booking/1");
-        Assert.AreEqual(403, response.Status, "Expected status code: 403");
+        Assert.That(response.Status, Is.EqualTo(403), "Expected status code: 403");
         var responseBody = await response.TextAsync();
         Console.WriteLine(responseBody);
     }
@@ -115,5 +93,19 @@ public class DeleteBookingTests
             IgnoreHTTPSErrors = true
         });
     }
+    public async Task GenerateToken()
+    {
+        TokenRequest tokenRequest = new TokenRequest
+        {
+            Username = "admin",
+            Password = "password123"
+        };
+        var authResponse = await Request.PostAsync("auth", new APIRequestContextOptions { DataObject = tokenRequest });
 
+        var jsonAuthResponse = await authResponse.JsonAsync<TokenResponse>(new JsonSerializerOptions()
+        {
+            PropertyNameCaseInsensitive = true
+        });
+        _token = jsonAuthResponse.Token;
     }
+}
