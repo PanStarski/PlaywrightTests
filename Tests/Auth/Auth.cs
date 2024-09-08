@@ -1,20 +1,16 @@
 using Microsoft.Playwright;
 using PlaywrightTests.Models;
 using System.Text.Json;
+using static PlaywrightTests.Logger;
 
 namespace PlaywrightTests.Tests;
 
 [TestFixture]
-    public class CreateTokenTest
+    public class AuthBookingTest
     {
     IPlaywright playwright;
-
+       
         private IAPIRequestContext Request;
-        public void GlobalSetup()
-        {
-        log4net.Config.XmlConfigurator.Configure();
-        }
-        private static readonly ILog log = LogManager.GetLogger(typeof(CreateTokenTest));
 
     [OneTimeSetUp]
         public async Task SetupApiTesting()
@@ -26,42 +22,48 @@ namespace PlaywrightTests.Tests;
     [Test]
     public async Task AuthSuccessPath()
     {
+        log.Info("AuthSuccessPath: Starting a test");
         TokenRequest tokenRequest = new TokenRequest
         {
             Username = "admin",
             Password = "password123"
         };
-        log.Info("Starting a test");
+        log.Info("Sending a POST Request");
         var response = await Request.PostAsync("auth", new APIRequestContextOptions { DataObject = tokenRequest });
 
-        log.Debug("Assert that response status is 200 OK");
+        log.Info("Assert that response status is 200 OK");
         Assert.That(response.Ok);
         Assert.That(response.Status, Is.EqualTo(200), "Expected status code: 200");
 
-        log.Debug("Assert that response body is not empty");
+        log.Info("Request OK. Assert that response body is not empty");
         var jsonResponse = await response.JsonAsync<TokenResponse>(new JsonSerializerOptions()
         {
             PropertyNameCaseInsensitive = true
         });
         Assert.That(jsonResponse.Token, Is.Not.Empty);
+        log.Info("Token was generated. Test passed");
     }
         [Test]
     public async Task AuthWithWrongCredentials()
     {
+        log.Info("AuthWithWrongCredentials: Starting a test");
         TokenRequest tokenRequest = new TokenRequest
         {
             Username = "admin",
             Password = "123456789" // wrong password
         };
+        log.Info("Sending POST Request");
         var response = await Request.PostAsync("auth", new APIRequestContextOptions { DataObject = tokenRequest });
         Assert.That(response.Ok);
         Assert.That(response.Status, Is.EqualTo(200), "Expected status code: 200");
+        log.Info("Request OK. Assert, that token wasn't generated");
 
         var jsonResponse = await response.JsonAsync<TokenResponse>(new JsonSerializerOptions()
         {
             PropertyNameCaseInsensitive = true
         });
         Assert.That(jsonResponse.Token, Is.Null);
+        log.Info("Token wasn't generated. Test passed");
     }
         private async Task CreateAPIRequestContext()
     {

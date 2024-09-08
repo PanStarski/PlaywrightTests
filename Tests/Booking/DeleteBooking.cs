@@ -1,10 +1,6 @@
-﻿using Microsoft.Playwright.NUnit;
-using Microsoft.Playwright;
-using Newtonsoft.Json;
+﻿using Microsoft.Playwright;
 using System.Text.Json;
 using PlaywrightTests.Models;
-using System.Reflection.PortableExecutable;
-using log4net;
 
 namespace PlaywrightTests.Tests;
 
